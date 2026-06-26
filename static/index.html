@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProtesIA — Upload CT</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:         #F1F5F9;
+    --card:       #FFFFFF;
+    --primary:    #0D9488;
+    --primary-dk: #0F766E;
+    --primary-lt: #F0FDFA;
+    --primary-bd: #99F6E4;
+    --navy:       #0F172A;
+    --text:       #1E293B;
+    --muted:      #64748B;
+    --faint:      #94A3B8;
+    --border:     #E2E8F0;
+    --border-lt:  #F1F5F9;
+    --ok:         #059669;
+    --ok-bg:      #ECFDF5;
+    --err:        #DC2626;
+    --err-bg:     #FEF2F2;
+    --warn-bg:    #FFFBEB;
+    --warn:       #D97706;
+    --radius:     10px;
+    --shadow:     0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--navy);
+    padding: 14px 24px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .header-logo { font-size: 1.6rem; line-height: 1; }
+  .header-title { color: #fff; font-size: 1rem; font-weight: 700; letter-spacing: -.01em; }
+  .header-sub   { color: var(--faint); font-size: .72rem; margin-top: 1px; }
+  .vpn {
+    margin-left: auto;
+    font-size: .7rem; font-weight: 500;
+    padding: 4px 10px; border-radius: 99px;
+    background: #052e16; color: #4ADE80; border: 1px solid #166534;
+  }
+
+  /* ── Main ── */
+  .main {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 24px 16px 80px;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+
+  /* ── Disk Gauge ── */
+  .disk {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    box-shadow: var(--shadow);
+  }
+  .disk-header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .disk-label { font-size: .78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .disk-free  { font-size: .82rem; font-weight: 600; color: var(--text); }
+  .disk-bar {
+    height: 10px; border-radius: 99px;
+    background: var(--border-lt);
+    overflow: hidden; display: flex;
+  }
+  .disk-bar-ct  { background: var(--primary); transition: width .4s ease; border-radius: 99px 0 0 99px; }
+  .disk-bar-other { background: #94A3B8; transition: width .4s ease; }
+  .disk-stats {
+    display: flex; gap: 20px; margin-top: 10px;
+    font-size: .78rem; color: var(--muted);
+  }
+  .disk-stats span { display: flex; align-items: center; gap: 5px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .dot-ct    { background: var(--primary); }
+  .dot-other { background: #94A3B8; }
+  .dot-free  { background: var(--border-lt); border: 1px solid var(--border); }
+
+  /* ── Upload Zone ── */
+  .zone-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .zone {
+    padding: 40px 24px 28px;
+    text-align: center;
+    border: 2px dashed transparent;
+    border-radius: var(--radius);
+    transition: border-color .15s, background .15s;
+    cursor: default;
+  }
+  .zone.drag { border-color: var(--primary); background: var(--primary-lt); }
+  .zone-icon { font-size: 2.6rem; margin-bottom: 8px; }
+  .zone-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .zone-hint  { font-size: .82rem; color: var(--muted); margin-bottom: 24px; }
+
+  .zone-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .zbtn {
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-size: .82rem; font-weight: 500;
+    cursor: pointer; border: 1.5px solid var(--border);
+    background: #fff; color: var(--text);
+    transition: background .12s, border-color .12s;
+    display: flex; align-items: center; gap: 6px;
+    white-space: nowrap;
+  }
+  .zbtn:hover { background: var(--bg); border-color: var(--primary-bd); }
+  .zbtn-icon { font-size: 1rem; }
+
+  .zone-formats {
+    margin-top: 16px;
+    font-size: .72rem; color: var(--faint);
+  }
+
+  /* ── Selected / Progress / Status ── */
+  .sel-card {
+    background: var(--primary-lt);
+    border: 1.5px solid var(--primary-bd);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .sel-icon { font-size: 1.8rem; line-height: 1; }
+  .sel-name { font-weight: 600; font-size: .9rem; color: var(--text); }
+  .sel-meta { font-size: .78rem; color: var(--muted); margin-top: 2px; }
+  .sel-clear {
+    margin-left: auto;
+    background: none; border: none; cursor: pointer;
+    font-size: 1rem; color: var(--muted); padding: 4px;
+  }
+  .sel-clear:hover { color: var(--err); }
+
+  .send-btn {
+    width: 100%; padding: 13px;
+    border-radius: var(--radius); border: none;
+    background: var(--primary); color: #fff;
+    font-size: .92rem; font-weight: 600;
+    cursor: pointer; transition: background .12s;
+  }
+  .send-btn:hover { background: var(--primary-dk); }
+  .send-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  .progress {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .prog-top { display: flex; justify-content: space-between; font-size: .8rem; font-weight: 500; color: var(--muted); margin-bottom: 8px; }
+  .prog-track { height: 8px; border-radius: 99px; background: var(--border-lt); overflow: hidden; }
+  .prog-fill  { height: 100%; border-radius: 99px; background: var(--primary); transition: width .2s ease; }
+  .prog-file  { font-size: .72rem; color: var(--faint); margin-top: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .status-msg {
+    padding: 12px 16px; border-radius: var(--radius);
+    font-size: .88rem; font-weight: 500;
+  }
+  .status-ok   { background: var(--ok-bg);  color: var(--ok);  }
+  .status-err  { background: var(--err-bg); color: var(--err); }
+
+  .reset-btn {
+    width: 100%; padding: 12px;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: #fff; color: var(--text);
+    font-size: .88rem; font-weight: 500;
+    cursor: pointer; transition: background .12s;
+  }
+  .reset-btn:hover { background: var(--bg); }
+
+  /* ── Data List ── */
+  .list-section {}
+  .list-header {
+    font-size: .72rem; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em;
+    margin-bottom: 10px;
+  }
+  .list-table {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .list-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: 8px;
+    padding: 12px 16px;
+    align-items: center;
+    border-bottom: 1px solid var(--border-lt);
+    font-size: .84rem;
+  }
+  .list-row:last-child { border-bottom: none; }
+  .list-row-head {
+    font-size: .7rem; font-weight: 600; color: var(--faint);
+    text-transform: uppercase; letter-spacing: .04em;
+    background: var(--bg);
+    padding: 8px 16px;
+  }
+  .list-name { font-weight: 500; display: flex; align-items: center; gap: 8px; overflow: hidden; }
+  .list-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .list-val  { color: var(--muted); text-align: right; white-space: nowrap; }
+  .list-empty { padding: 32px; text-align: center; color: var(--faint); font-size: .88rem; }
+  .list-loading { padding: 32px; text-align: center; color: var(--faint); font-size: .84rem; }
+
+  input[type=file] { display: none; }
+
+  @media (max-width: 500px) {
+    .main { padding: 16px 10px 64px; }
+    .zone { padding: 28px 16px 20px; }
+    .zone-btns { flex-direction: column; align-items: stretch; }
+    .list-row { grid-template-columns: 1fr auto; }
+    .list-row-head .list-val:nth-child(3),
+    .list-row-head .list-val:nth-child(4),
+    .list-row .list-val:nth-child(3),
+    .list-row .list-val:nth-child(4) { display: none; }
+    .disk-stats { flex-direction: column; gap: 4px; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+/* ── Helpers ───────────────────────────────────────────────────────────── */
+
+function fmtBytes(b) {
+  if (b == null) return '—';
+  if (b >= 1e12) return (b / 1e12).toFixed(1) + ' TB';
+  if (b >= 1e9)  return (b / 1e9).toFixed(1) + ' GB';
+  if (b >= 1e6)  return (b / 1e6).toFixed(1) + ' MB';
+  if (b >= 1e3)  return (b / 1e3).toFixed(0) + ' KB';
+  return b + ' B';
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+const api = {
+  disk:     () => fetch('/api/disk').then(r => r.json()),
+  patients: () => fetch('/api/patients').then(r => r.json()),
+};
+
+/* ── Recursive directory reader (for drag & drop) ──────────────────── */
+
+function entryToFile(entry) {
+  return new Promise((res, rej) => entry.file(res, rej));
+}
+
+async function readAllEntries(reader) {
+  const all = [];
+  let batch;
+  do {
+    batch = await new Promise((r, e) => reader.readEntries(r, e));
+    all.push(...batch);
+  } while (batch.length);
+  return all;
+}
+
+async function collectEntries(entries) {
+  const result = [];
+  for (const entry of entries) {
+    if (entry.isFile) {
+      const f = await entryToFile(entry);
+      result.push({ file: f, path: entry.fullPath.replace(/^\//, '') });
+    } else if (entry.isDirectory) {
+      const sub = await readAllEntries(entry.createReader());
+      result.push(...(await collectEntries(sub)));
+    }
+  }
+  return result;
+}
+
+/* ── DiskGauge ─────────────────────────────────────────────────────── */
+
+function DiskGauge({ disk }) {
+  if (!disk) return (
+    <div className="disk">
+      <div className="disk-header">
+        <span className="disk-label">Espaço na VM</span>
+        <span className="disk-free" style={{color:'var(--faint)'}}>carregando…</span>
+      </div>
+      <div className="disk-bar"><div className="disk-bar-ct" style={{width:0}}/></div>
+    </div>
+  );
+
+  const { total, used, free, raw_data_size } = disk;
+  const otherUsed = used - raw_data_size;
+  const pctCt    = (raw_data_size / total * 100);
+  const pctOther = (otherUsed / total * 100);
+
+  const freeWarn = free < 5e9;
+
+  return (
+    <div className="disk" style={freeWarn ? {borderLeft: '3px solid var(--warn)'} : {}}>
+      <div className="disk-header">
+        <span className="disk-label">Espaço na VM</span>
+        <span className="disk-free" style={freeWarn ? {color:'var(--warn)'} : {}}>
+          {fmtBytes(free)} livres de {fmtBytes(total)}
+        </span>
+      </div>
+      <div className="disk-bar">
+        <div className="disk-bar-ct" style={{width: pctCt + '%'}} />
+        <div className="disk-bar-other" style={{width: pctOther + '%'}} />
+      </div>
+      <div className="disk-stats">
+        <span><i className="dot dot-ct"/>Dados CT: {fmtBytes(raw_data_size)}</span>
+        <span><i className="dot dot-other"/>Sistema: {fmtBytes(otherUsed)}</span>
+        <span><i className="dot dot-free"/>Livre: {fmtBytes(free)}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Uploader ──────────────────────────────────────────────────────── */
+
+function Uploader({ onDone }) {
+  const [phase, setPhase]       = useState('idle');    // idle | selected | uploading | done | error
+  const [dragOver, setDragOver] = useState(false);
+  const [selected, setSelected] = useState(null);      // { mode, name, items, count, totalSize }
+  const [progress, setProgress] = useState({ done: 0, total: 0, file: '' });
+  const [message, setMessage]   = useState(null);      // { type, text }
+
+  const refFolder  = useRef();
+  const refArchive = useRef();
+  const refNifti   = useRef();
+
+  /* ── Seleção ── */
+  function selectFolder(fileList) {
+    const items = [...fileList].map(f => ({ file: f, path: f.webkitRelativePath || f.name }));
+    if (!items.length) return;
+    const name      = items[0].path.split('/')[0] || 'pasta';
+    const totalSize = items.reduce((s, i) => s + i.file.size, 0);
+    setSelected({ mode: 'folder', name, items, count: items.length, totalSize });
+    setPhase('selected');
+    setMessage(null);
+  }
+
+  function selectArchive(file) {
+    if (!file) return;
+    setSelected({ mode: 'archive', name: file.name, items: [file], count: 1, totalSize: file.size });
+    setPhase('selected');
+    setMessage(null);
+  }
+
+  function selectNifti(fileList) {
+    const items = [...fileList];
+    if (!items.length) return;
+    const name      = items.length === 1 ? items[0].name : `${items.length} arquivos NIfTI`;
+    const totalSize = items.reduce((s, f) => s + f.size, 0);
+    setSelected({ mode: 'nifti', name, items, count: items.length, totalSize });
+    setPhase('selected');
+    setMessage(null);
+  }
+
+  /* ── Drag & Drop ── */
+  function onDragOver(e) { e.preventDefault(); setDragOver(true); }
+  function onDragLeave() { setDragOver(false); }
+
+  async function onDrop(e) {
+    e.preventDefault();
+    setDragOver(false);
+
+    const entries = [...e.dataTransfer.items]
+      .map(i => i.webkitGetAsEntry && i.webkitGetAsEntry())
+      .filter(Boolean);
+
+    if (!entries.length) return;
+
+    // Single archive file
+    if (entries.length === 1 && entries[0].isFile) {
+      const name = entries[0].name;
+      if (/\.(zip|tar\.gz|tgz|tar\.bz2|tar)$/i.test(name)) {
+        const file = await entryToFile(entries[0]);
+        return selectArchive(file);
+      }
+      if (/\.nii(\.gz)?$/i.test(name)) {
+        const file = await entryToFile(entries[0]);
+        return selectNifti([file]);
+      }
+    }
+
+    // Multiple NIfTI files
+    const allFiles = entries.every(e => e.isFile);
+    if (allFiles) {
+      const files = await Promise.all(entries.map(entryToFile));
+      const allNifti = files.every(f => /\.nii(\.gz)?$/i.test(f.name));
+      if (allNifti) return selectNifti(files);
+    }
+
+    // Directory or mixed files → folder upload
+    const collected = await collectEntries(entries);
+    if (collected.length) {
+      const name      = entries[0].name;
+      const totalSize = collected.reduce((s, i) => s + i.file.size, 0);
+      setSelected({ mode: 'folder', name, items: collected, count: collected.length, totalSize });
+      setPhase('selected');
+      setMessage(null);
+    }
+  }
+
+  /* ── Upload ── */
+  async function startUpload() {
+    if (!selected) return;
+    setPhase('uploading');
+    setProgress({ done: 0, total: selected.count, file: '' });
+
+    try {
+      if (selected.mode === 'folder') {
+        await uploadFolder(selected.items);
+      } else if (selected.mode === 'archive') {
+        await uploadArchive(selected.items[0]);
+      } else {
+        await uploadNifti(selected.items);
+      }
+      setPhase('done');
+      setMessage({ type: 'ok', text: `Upload concluído — ${selected.count} arquivo${selected.count !== 1 ? 's' : ''} enviado${selected.count !== 1 ? 's' : ''}` });
+      onDone();
+    } catch (err) {
+      setPhase('error');
+      setMessage({ type: 'err', text: err.message || 'Falha no upload' });
+    }
+  }
+
+  async function uploadFolder(items) {
+    const BATCH = 8;
+    let done = 0;
+    for (let i = 0; i < items.length; i += BATCH) {
+      const batch = items.slice(i, i + BATCH);
+      await Promise.all(batch.map(async ({ file, path }) => {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('relative_path', path);
+        const res = await fetch('/api/upload/files', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error(`Falha ao enviar: ${path}`);
+        done++;
+        setProgress({ done, total: items.length, file: path });
+      }));
+    }
+  }
+
+  async function uploadArchive(file) {
+    setProgress({ done: 0, total: 1, file: file.name });
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch('/api/upload/archive', { method: 'POST', body: fd });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.detail || 'Falha no upload');
+    }
+    setProgress({ done: 1, total: 1, file: file.name });
+  }
+
+  async function uploadNifti(files) {
+    let done = 0;
+    for (const file of files) {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('relative_path', file.name);
+      const res = await fetch('/api/upload/files', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error(`Falha ao enviar: ${file.name}`);
+      done++;
+      setProgress({ done, total: files.length, file: file.name });
+    }
+  }
+
+  function reset() {
+    setPhase('idle');
+    setSelected(null);
+    setMessage(null);
+    setProgress({ done: 0, total: 0, file: '' });
+  }
+
+  /* ── Render ── */
+  const isIdle     = phase === 'idle' || phase === 'selected';
+  const pct        = progress.total > 0 ? Math.round(progress.done / progress.total * 100) : 0;
+
+  const modeIcon = { folder: '📁', archive: '🗜️', nifti: '🧠' };
+  const modeLabel = { folder: 'Pasta DICOM', archive: 'Arquivo compactado', nifti: 'NIfTI' };
+
+  return (
+    <div className="zone-card">
+      {/* Drop zone */}
+      {isIdle && (
+        <div
+          className={`zone ${dragOver ? 'drag' : ''}`}
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
+        >
+          <div className="zone-icon">☁️</div>
+          <p className="zone-title">Arraste os dados aqui</p>
+          <p className="zone-hint">Ou selecione o tipo de dado abaixo</p>
+
+          <div className="zone-btns">
+            <button className="zbtn" onClick={() => refFolder.current.click()}>
+              <span className="zbtn-icon">📁</span> Pasta DICOM
+            </button>
+            <button className="zbtn" onClick={() => refArchive.current.click()}>
+              <span className="zbtn-icon">🗜️</span> ZIP / TAR.GZ
+            </button>
+            <button className="zbtn" onClick={() => refNifti.current.click()}>
+              <span className="zbtn-icon">🧠</span> NIfTI
+            </button>
+          </div>
+
+          <p className="zone-formats">
+            Aceita: pastas DICOM · .zip · .tar.gz · .tgz · .nii · .nii.gz
+          </p>
+        </div>
+      )}
+
+      {/* Selected preview */}
+      {phase === 'selected' && selected && (
+        <div style={{padding: '16px 18px', display:'flex', flexDirection:'column', gap: 12}}>
+          <div className="sel-card">
+            <div className="sel-icon">{modeIcon[selected.mode]}</div>
+            <div>
+              <div className="sel-name">{selected.name}</div>
+              <div className="sel-meta">
+                {modeLabel[selected.mode]} · {selected.count} arquivo{selected.count !== 1 ? 's' : ''} · {fmtBytes(selected.totalSize)}
+              </div>
+            </div>
+            <button className="sel-clear" onClick={reset} title="Cancelar">✕</button>
+          </div>
+          <button className="send-btn" onClick={startUpload}>
+            Enviar para a VM
+          </button>
+        </div>
+      )}
+
+      {/* Progress */}
+      {phase === 'uploading' && (
+        <div style={{padding: '16px 18px'}}>
+          <div className="progress">
+            <div className="prog-top">
+              <span>
+                {progress.total > 1
+                  ? `${progress.done} / ${progress.total} arquivos`
+                  : 'Enviando arquivo…'}
+              </span>
+              <span>{pct}%</span>
+            </div>
+            <div className="prog-track">
+              <div className="prog-fill" style={{width: pct + '%'}} />
+            </div>
+            {progress.file && (
+              <div className="prog-file">↑ {progress.file}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Done / Error */}
+      {(phase === 'done' || phase === 'error') && (
+        <div style={{padding: '16px 18px', display:'flex', flexDirection:'column', gap: 10}}>
+          {message && (
+            <div className={`status-msg ${message.type === 'ok' ? 'status-ok' : 'status-err'}`}>
+              {message.type === 'ok' ? '✓ ' : '✕ '}{message.text}
+            </div>
+          )}
+          <button className="reset-btn" onClick={reset}>
+            Enviar outro
+          </button>
+        </div>
+      )}
+
+      {/* Hidden inputs */}
+      <input ref={refFolder}  type="file" webkitdirectory="true" multiple
+             onChange={e => { selectFolder(e.target.files); e.target.value=''; }} />
+      <input ref={refArchive} type="file" accept=".zip,.tar,.tar.gz,.tgz,.tar.bz2"
+             onChange={e => { selectArchive(e.target.files[0]); e.target.value=''; }} />
+      <input ref={refNifti}   type="file" accept=".nii,.nii.gz" multiple
+             onChange={e => { selectNifti([...e.target.files]); e.target.value=''; }} />
+    </div>
+  );
+}
+
+/* ── DataList ──────────────────────────────────────────────────────── */
+
+function DataList({ items, loading }) {
+  if (loading) return (
+    <div className="list-section">
+      <div className="list-header">Dados na VM</div>
+      <div className="list-table"><div className="list-loading">Carregando…</div></div>
+    </div>
+  );
+
+  return (
+    <div className="list-section">
+      <div className="list-header">Dados na VM ({items.length})</div>
+      <div className="list-table">
+        {items.length === 0 ? (
+          <div className="list-empty">Nenhum dado enviado ainda.</div>
+        ) : (
+          <>
+            <div className="list-row list-row-head">
+              <div>Nome</div>
+              <div className="list-val">Arquivos</div>
+              <div className="list-val">Tamanho</div>
+              <div className="list-val">Modificado</div>
+            </div>
+            {items.map((p, i) => (
+              <div className="list-row" key={i}>
+                <div className="list-name">
+                  <span>{p.type === 'folder' ? '📁' : '📄'}</span>
+                  <span>{p.name}</span>
+                </div>
+                <div className="list-val">{p.files}</div>
+                <div className="list-val">{fmtBytes(p.size)}</div>
+                <div className="list-val">{fmtDate(p.last_modified)}</div>
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── App ───────────────────────────────────────────────────────────── */
+
+function App() {
+  const [disk, setDisk]         = useState(null);
+  const [patients, setPatients] = useState([]);
+  const [loading, setLoading]   = useState(true);
+
+  const refresh = useCallback(() => {
+    api.disk().then(setDisk).catch(() => {});
+    api.patients()
+      .then(data => { setPatients(data.patients); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  return (
+    <>
+      <header className="header">
+        <div className="header-logo">🦾</div>
+        <div>
+          <div className="header-title">ProtesIA</div>
+          <div className="header-sub">Upload de Imagens CT — LT3D</div>
+        </div>
+        <div className="vpn">🟢 VPN Ativa</div>
+      </header>
+
+      <main className="main">
+        <DiskGauge disk={disk} />
+        <Uploader onDone={refresh} />
+        <DataList items={patients} loading={loading} />
+      </main>
+    </>
+  );
+}
+
+/* ── Mount ─────────────────────────────────────────────────────────── */
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+services:
+  ct-uploader:
+    build: .
+    container_name: protesia-ct-uploader
+    restart: unless-stopped
+
+    ports:
+      - "8000:8000"
+
+    volumes:
+      # raw_data fica no HOST — acessível pelo pipeline sem entrar no container
+      - ${RAW_DATA_HOST:-./raw_data}:/app/raw_data
+
+    # Credenciais (UPLOAD_USER / UPLOAD_PASS) vêm do .env — não há fallback embutido.
+    env_file:
+      - .env
+    environment:
+      - RAW_DATA_DIR=/app/raw_data
